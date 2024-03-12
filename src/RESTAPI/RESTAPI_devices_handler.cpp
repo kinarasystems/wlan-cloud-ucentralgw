@@ -143,7 +143,6 @@ namespace OpenWifi {
 			RetObj.set("serialNumbers", Objects);
 		} else {
 			std::vector<GWObjects::Device> Devices;
-			StorageService()->GetDevices(QB_.Offset, QB_.Limit, Devices, OrderBy);
 			StorageService()->GetDevices(QB_.Offset, QB_.Limit, Devices, OrderBy, includeProvisioned);
 			Poco::JSON::Array Objects;
 			for (const auto &i : Devices) {
