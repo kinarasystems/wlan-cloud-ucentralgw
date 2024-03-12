@@ -85,6 +85,7 @@ namespace OpenWifi {
 		auto serialOnly = GetBoolParameter(RESTAPI::Protocol::SERIALONLY, false);
 		auto deviceWithStatus = GetBoolParameter(RESTAPI::Protocol::DEVICEWITHSTATUS, false);
 		auto completeInfo = GetBoolParameter("completeInfo", false);
+		auto includeProvisioned = GetBoolParameter("includeProvisioned", true);
 
 		Poco::JSON::Object RetObj;
 		if (!QB_.Select.empty()) {
@@ -123,7 +124,7 @@ namespace OpenWifi {
 			}
 		} else if (serialOnly) {
 			std::vector<std::string> SerialNumbers;
-			StorageService()->GetDeviceSerialNumbers(QB_.Offset, QB_.Limit, SerialNumbers, OrderBy);
+			StorageService()->GetDeviceSerialNumbers(QB_.Offset, QB_.Limit, SerialNumbers, OrderBy, includeProvisioned);
 			Poco::JSON::Array Objects;
 			for (const auto &i : SerialNumbers) {
 				Objects.add(i);
@@ -141,7 +142,7 @@ namespace OpenWifi {
 			RetObj.set("serialNumbers", Objects);
 		} else {
 			std::vector<GWObjects::Device> Devices;
-			StorageService()->GetDevices(QB_.Offset, QB_.Limit, Devices, OrderBy);
+			StorageService()->GetDevices(QB_.Offset, QB_.Limit, Devices, OrderBy, includeProvisioned);
 			Poco::JSON::Array Objects;
 			for (const auto &i : Devices) {
 				Poco::JSON::Object Obj;

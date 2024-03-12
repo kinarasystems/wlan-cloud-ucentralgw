@@ -190,16 +190,24 @@ namespace OpenWifi {
 
 	bool Storage::GetDeviceSerialNumbers(uint64_t From, uint64_t HowMany,
 										 std::vector<std::string> &SerialNumbers,
-										 const std::string &orderBy) {
+										 const std::string &orderBy, bool includeProvisioned) {
 		try {
 			Poco::Data::Session Sess = Pool_->get();
 			Poco::Data::Statement Select(Sess);
 
 			std::string st;
+			std::string whereClause = "";
+
+			if (includeProvisioned == false) {
+				whereClause = fmt::format("WHERE entity='' and venue=''");
+			}
+
+			st = fmt::format("SELECT SerialNumber From Devices {}", whereClause);
+
 			if (orderBy.empty())
-				st = "SELECT SerialNumber From Devices ORDER BY SerialNumber ASC ";
+				st += " ORDER BY SerialNumber ASC ";
 			else
-				st = "SELECT SerialNumber From Devices " + orderBy;
+				st += orderBy;
 
 			Select << st + ComputeRange(From, HowMany), Poco::Data::Keywords::into(SerialNumbers);
 			Select.execute();
@@ -762,7 +770,8 @@ namespace OpenWifi {
 	}
 
 	bool Storage::GetDevices(uint64_t From, uint64_t HowMany,
-							 std::vector<GWObjects::Device> &Devices, const std::string &orderBy) {
+							 std::vector<GWObjects::Device> &Devices, const std::string &orderBy,
+							 bool includeProvisioned) {
 		DeviceRecordList Records;
 		try {
 			Poco::Data::Session Sess = Pool_->get();
@@ -770,9 +779,16 @@ namespace OpenWifi {
 
 			// std::string st{"SELECT " + DB_DeviceSelectFields + " FROM Devices " + orderBy.empty()
 			// ? " ORDER BY SerialNumber ASC " + ComputeRange(From, HowMany)};
-			std::string st = fmt::format("SELECT {} FROM Devices {} {}", DB_DeviceSelectFields,
+			std::string whereClause = "";
+			if (includeProvisioned == false) {
+				whereClause = fmt::format("WHERE entity='' and venue=''");
+			}
+
+			std::string st = fmt::format("SELECT {} FROM Devices {} {} {}", DB_DeviceSelectFields, whereClause,
 										 orderBy.empty() ? " ORDER BY SerialNumber ASC " : orderBy,
 										 ComputeRange(From, HowMany));
+
+			//Logger().information(fmt::format(" GetDevices st is {} ", st));
 
 			Select << ConvertParams(st), Poco::Data::Keywords::into(Records);
 			Select.execute();

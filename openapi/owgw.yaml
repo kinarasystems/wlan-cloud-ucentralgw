@@ -1657,6 +1657,11 @@ paths:
             type: integer
             default: 70
           required: false
+        - in: query
+          description: only devices which are not provisioned
+          name: includeProvisioned
+          schema:
+            type: boolean
       responses:
         200:
           description: List devices
