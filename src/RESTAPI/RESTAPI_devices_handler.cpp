@@ -124,7 +124,6 @@ namespace OpenWifi {
 			}
 		} else if (serialOnly) {
 			std::vector<std::string> SerialNumbers;
-			StorageService()->GetDeviceSerialNumbers(QB_.Offset, QB_.Limit, SerialNumbers, OrderBy);
 			StorageService()->GetDeviceSerialNumbers(QB_.Offset, QB_.Limit, SerialNumbers, OrderBy, includeProvisioned);
 			Poco::JSON::Array Objects;
 			for (const auto &i : SerialNumbers) {
