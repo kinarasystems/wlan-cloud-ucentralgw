@@ -101,4 +101,16 @@ if [ "$1" = "${APP_HOME_DIR}/${APP_NAME}" -a "$(id -u)" = '0' ]; then
     exec gosu "$APP_USER" "$@"
 fi
 
-exec "$@"
+#exec "$@"
+# Set default Valgrind command and options
+VALGRIND_CMD="valgrind"
+VALGRIND_OPTIONS="--leak-check=full --log-file=bhavesh2.txt --show-leak-kinds=all"
+
+# Check if any additional Valgrind options were provided
+if [ ! -z "$VALGRIND_EXTRA_OPTIONS" ]; then
+    VALGRIND_OPTIONS+=" $VALGRIND_EXTRA_OPTIONS"
+fi
+
+# Run Valgrind with the specified command and options
+#exec $VALGRIND_CMD $VALGRIND_OPTIONS "$@"
+exec /bin/sleep 234232

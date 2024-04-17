@@ -99,7 +99,7 @@ RUN mkdir -p $APP_ROOT $APP_CONFIG && \
     chown $APP_USER: $APP_ROOT $APP_CONFIG
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
-    librdkafka++1 gosu gettext ca-certificates bash jq curl wget \
+    librdkafka++1 gosu gettext ca-certificates bash jq curl wget procps gdb valgrind\
     libmariadb-dev-compat libpq5 unixodbc postgresql-client libfmt7 sqlite3
 
 COPY readiness_check /readiness_check
