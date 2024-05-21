@@ -5,7 +5,6 @@
 #pragma once
 
 #include <framework/SubSystemServer.h>
-#include <framework/MicroServiceFuncs.h>
 #include <libs/Scheduler.h>
 #include <Poco/Environment.h>
 
@@ -27,7 +26,7 @@ namespace OpenWifi {
 	  private:
 		GenericScheduler() noexcept
 			: SubSystemServer("Scheduler", "SCHEDULER", "scheduler"),
-			  Scheduler_(((int)MicroServiceConfigGetInt("openwifi.system.cpu_num", Poco::Environment::processorCount()))*2) {
+			  Scheduler_(((int)std::stoi(Poco::Environment::get("GENERIC_SCHEDULER_CORES", std::to_string(Poco::Environment::processorCount()))))*2) {
 
 		}
 		Bosma::Scheduler	Scheduler_;

@@ -20,7 +20,7 @@ namespace OpenWifi {
 	class AP_WS_ReactorThreadPool {
 	  public:
 		explicit AP_WS_ReactorThreadPool(Poco::Logger &Logger) : Logger_(Logger) {
-			int CPUCount = (int)MicroServiceConfigGetInt("openwifi.system.cpu_num", Poco::Environment::processorCount());
+			int CPUCount = (int)MicroServiceConfigGetInt("openwifi.system.cpus", Poco::Environment::processorCount());
 			NumberOfThreads_ = CPUCount * 4;
 			if (NumberOfThreads_ == 0)
 				NumberOfThreads_ = 8;
