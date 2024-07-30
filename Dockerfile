@@ -1,7 +1,8 @@
 ARG DEBIAN_VERSION=11.5-slim
 ARG POCO_VERSION=poco-tip-v2
 ARG CPPKAFKA_VERSION=tip-v1
-ARG VALIJASON_VERSION=tip-v1
+#ARG VALIJASON_VERSION=tip-v1
+ARG VALIJASON_VERSION=v1.0.2
 ARG APP_NAME=owgw
 ARG APP_HOME_DIR=/openwifi
 
@@ -45,8 +46,12 @@ FROM build-base AS valijson-build
 
 ARG VALIJASON_VERSION
 
-ADD https://api.github.com/repos/Telecominfraproject/wlan-cloud-lib-valijson/git/refs/tags/${VALIJASON_VERSION} version.json
-RUN git clone https://github.com/Telecominfraproject/wlan-cloud-lib-valijson --branch ${VALIJASON_VERSION} /valijson
+#ADD https://api.github.com/repos/Telecominfraproject/wlan-cloud-lib-valijson/git/refs/tags/${VALIJASON_VERSION} version.json
+#RUN git clone https://github.com/Telecominfraproject/wlan-cloud-lib-valijson --branch ${VALIJASON_VERSION} /valijson
+
+ADD https://api.github.com/repos/tristanpenman/valijson/git/refs/tags/${VALIJASON_VERSION} version.json
+RUN git clone --recurse-submodules https://github.com/tristanpenman/valijson.git --branch ${VALIJASON_VERSION} /valijson
+
 
 WORKDIR /valijson
 RUN mkdir cmake-build

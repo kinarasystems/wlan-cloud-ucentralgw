@@ -966,15 +966,19 @@ static std::string DefaultAPSchema = R"foo(
                 },
                 "use-dns": {
                     "description": "Define which DNS servers shall be used. This can either be a list of static IPv4 addresse or dhcp (use the server provided by the DHCP lease)",
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "format": "ipv4",
-                        "examples": [
-                            "8.8.8.8",
-                            "4.4.4.4"
-                        ]
-                    }
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "ipv4"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "format": "ipv4"
+                            }
+                        }
+                    ]
                 },
                 "disallow-upstream-subnet": {
                     "description": "This option only applies to \"downstream\" interfaces. The downstream interface will prevent traffic going out to the listed CIDR4s. This can be used to prevent a guest / captive interface being able to communicate with RFC1918 ranges.",
@@ -5359,15 +5363,19 @@ static std::string DefaultSWITCHSchema = R"foo(
                     ]
                 },
                 "use-dns": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "format": "ipv4",
-                        "examples": [
-                            "8.8.8.8",
-                            "4.4.4.4"
-                        ]
-                    }
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "ipv4"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "format": "ipv4"
+                            }
+                        }
+                    ]
                 },
                 "dhcp": {
                     "$ref": "#/$defs/interface.ipv4.dhcp"
@@ -8299,9 +8307,20 @@ namespace OpenWifi {
 				valijson::adapters::PocoJsonAdapter Tester(Doc);
 				valijson::Validator Validator;
 				valijson::ValidationResults Results;
+                if (Type == ConfigurationType::AP) {
+                    Logger().warning("Calling validate for type AP");
+                }
+                else if (Type == ConfigurationType::SWITCH)
+                {
+                    Logger().warning("Calling validate for type SWITCH");
+                }
+                
 				if (Validator.validate(RootSchema_[static_cast<int>(Type)], Tester, &Results)) {
+                    Logger().warning("Validated!!!");
 					return true;
 				}
+                Logger().warning("Failed to validate");
+
 
                 Poco::JSON::Array ErrorArray;
 				for (const auto &error : Results) {
@@ -8319,6 +8338,7 @@ namespace OpenWifi {
                 Errors = os.str();
 				return false;
 			} catch (const Poco::Exception &E) {
+                fmt::format("Parsing error (0): {}", E.what());
 				Logger().log(E);
 			} catch (const std::exception &E) {
 				Logger().warning(
