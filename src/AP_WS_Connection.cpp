@@ -31,33 +31,57 @@
 
 namespace OpenWifi {
 
-	void AP_WS_Connection::LogException(const Poco::Exception &E) {
-		poco_information(Logger_, fmt::format("EXCEPTION({}): {}", CId_, E.displayText()));
-	}
+    void AP_WS_Connection::LogException(const Poco::Exception &E) {
+        poco_information(Logger_, fmt::format("EXCEPTION({}): {}", CId_, E.displayText()));
+    }
 
-	AP_WS_Connection::AP_WS_Connection(Poco::Net::HTTPServerRequest &request,
-									   Poco::Net::HTTPServerResponse &response,
-									   uint64_t session_id, Poco::Logger &L,
-									   std::pair<std::shared_ptr<Poco::Net::SocketReactor>, std::shared_ptr<LockedDbSession>> R)
-		: Logger_(L) {
+    AP_WS_Connection::AP_WS_Connection(Poco::Net::HTTPServerRequest &request,
+                                       Poco::Net::HTTPServerResponse &response,
+                                       uint64_t session_id, Poco::Logger &L,
+                                       std::pair<std::shared_ptr<Poco::Net::SocketReactor>, std::shared_ptr<LockedDbSession>> R)
+        : Logger_(L) {
 
-		Reactor_ = R.first;
-		DbSession_ = R.second;
-		State_.sessionId = session_id;
+        Reactor_ = R.first;
+        DbSession_ = R.second;
+        State_.sessionId = session_id;
 
-		WS_ = std::make_unique<Poco::Net::WebSocket>(request, response);
+        WS_ = std::make_unique<Poco::Net::WebSocket>(request, response);
 
-		auto TS = Poco::Timespan(360, 0);
+        auto TS = Poco::Timespan(360, 0);
 
-		WS_->setMaxPayloadSize(BufSize);
-		WS_->setReceiveTimeout(TS);
-		WS_->setNoDelay(false);
-		WS_->setKeepAlive(true);
-		WS_->setBlocking(false);
-		uuid_ = MicroServiceRandom(std::numeric_limits<std::uint64_t>::max()-1);
+        WS_->setMaxPayloadSize(BufSize);
+        WS_->setReceiveTimeout(TS);
+        WS_->setNoDelay(false);
+        WS_->setKeepAlive(true);
+        WS_->setBlocking(false);
+        int sock_fd = WS_->impl()->sockfd();
+        if (sock_fd >= 0) {
+            int opt_val;
+            socklen_t opt_len = sizeof(opt_val);
+            // TCP_KEEPINTVL: overrides tcp_keepalive_intvl
+            // TCP_KEEPCNT: overrides tcp_keepalive_probes
+            // TCP_KEEPIDLE: overrides tcp_keepalive_time
+            poco_debug(Logger_, fmt::format("AP_WS_CONNECTION(): sock_fd={}", sock_fd));
+            opt_val = 5;
+            if (setsockopt(sock_fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&opt_val, opt_len) < 0) {
+                poco_error(Logger_, "AP_WS_CONNECTION(): Failed to set TCP_KEEPINTVL");
+            }
+            opt_val = 2;
+            if (setsockopt(sock_fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt_val, opt_len) < 0) {
+                poco_error(Logger_, "AP_WS_CONNECTION(): Failed to set TCP_KEEPCNT");
+            }
+            opt_val = 45;
+            if (setsockopt(sock_fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&opt_val, opt_len) < 0) {
+                poco_error(Logger_, "AP_WS_CONNECTION(): Failed to set TCP_KEEPIDLE");
+            }
+        } else {
+            poco_debug(Logger_, fmt::format("AP_WS_CONNECTION(): sock_fd={}, No socket yet",
+                sock_fd));
+        }
+        uuid_ = MicroServiceRandom(std::numeric_limits<std::uint64_t>::max()-1);
 
-		AP_WS_Server()->IncrementConnectionCount();
-	}
+        AP_WS_Server()->IncrementConnectionCount();
+    }
 
 	void AP_WS_Connection::Start() {
 		Registered_ = true;
