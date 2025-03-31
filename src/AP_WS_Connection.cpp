@@ -76,6 +76,8 @@ namespace OpenWifi {
 	}
 
 	AP_WS_Connection::~AP_WS_Connection() {
+		poco_information(Logger_,
+			fmt::format("DESTRUCTOR({}): Calling Destructor for session {}.", CId_, State_.session_id));
 		std::lock_guard G(ConnectionMutex_);
 		AP_WS_Server()->DecrementConnectionCount();
 		EndConnection();
@@ -97,6 +99,8 @@ namespace OpenWifi {
 	}
 
 	void AP_WS_Connection::EndConnection() {
+		poco_information(Logger_,
+			fmt::format("ENDCONNECTION({}): Calling End Connection for session {}.", CId_, State_.session_id));
 		bool expectedValue=false;
 		if (Dead_.compare_exchange_strong(expectedValue,true,std::memory_order_release,std::memory_order_relaxed)) {
 
@@ -560,14 +564,14 @@ namespace OpenWifi {
 
 	void AP_WS_Connection::OnSocketShutdown(
 		[[maybe_unused]] const Poco::AutoPtr<Poco::Net::ShutdownNotification> &pNf) {
-		poco_trace(Logger_, fmt::format("SOCKET-SHUTDOWN({}): Closing.", CId_));
+		poco_information(Logger_, fmt::format("SOCKET-SHUTDOWN({}): Closing.", CId_));
 		std::lock_guard	G(ConnectionMutex_);
 		return EndConnection();
 	}
 
 	void AP_WS_Connection::OnSocketError(
 		[[maybe_unused]] const Poco::AutoPtr<Poco::Net::ErrorNotification> &pNf) {
-		poco_trace(Logger_, fmt::format("SOCKET-ERROR({}): Closing.", CId_));
+		poco_information(Logger_, fmt::format("SOCKET-ERROR({}): Closing.", CId_));
 		std::lock_guard	G(ConnectionMutex_);
 		return EndConnection();
 	}
