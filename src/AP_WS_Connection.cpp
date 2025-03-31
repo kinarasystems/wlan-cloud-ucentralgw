@@ -77,7 +77,7 @@ namespace OpenWifi {
 
 	AP_WS_Connection::~AP_WS_Connection() {
 		poco_information(Logger_,
-			fmt::format("DESTRUCTOR({}): Calling Destructor for session {}.", CId_, State_.session_id));
+			fmt::format("DESTRUCTOR({}): Calling Destructor for session {}.", CId_, State_.sessionId));
 		std::lock_guard G(ConnectionMutex_);
 		AP_WS_Server()->DecrementConnectionCount();
 		EndConnection();
@@ -100,7 +100,7 @@ namespace OpenWifi {
 
 	void AP_WS_Connection::EndConnection() {
 		poco_information(Logger_,
-			fmt::format("ENDCONNECTION({}): Calling End Connection for session {}.", CId_, State_.session_id));
+			fmt::format("ENDCONNECTION({}): Calling End Connection for session {}.", CId_, State_.sessionId));
 		bool expectedValue=false;
 		if (Dead_.compare_exchange_strong(expectedValue,true,std::memory_order_release,std::memory_order_relaxed)) {
 
