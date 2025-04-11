@@ -18,10 +18,6 @@
 #include <framework/ow_constants.h>
 
 #include <fmt/format.h>
-#include <unistd.h>
-#include <execinfo.h>
-
-#include <iostream>
 
 #include <AP_WS_Connection.h>
 #include <AP_WS_Server.h>
@@ -80,32 +76,11 @@ namespace OpenWifi {
 	}
 
 	AP_WS_Connection::~AP_WS_Connection() {
-		poco_information(Logger_,
-			fmt::format("DESTRUCTOR({}): Calling Destructor for session {} and address {}.", CId_, State_.sessionId, fmt::ptr(this)));
-		print_stacktrace();
 		std::lock_guard G(ConnectionMutex_);
 		AP_WS_Server()->DecrementConnectionCount();
-		EndConnection(0);
-		poco_information(Logger_, fmt::format("TERMINATION({}): Session={}, Connection removed.", SerialNumber_,
+		EndConnection();
+		poco_trace(Logger_, fmt::format("TERMINATION({}): Session={}, Connection removed.", SerialNumber_,
 										State_.sessionId));
-	}
-
-	
-	void AP_WS_Connection::print_stacktrace(void) {
-		char **strings;
-		size_t i, size;
-		enum Constexpr { MAX_SIZE = 1024 };
-		void *array[MAX_SIZE];
-		size = backtrace(array, MAX_SIZE);
-		strings = backtrace_symbols(array, size);
-		std::ostringstream trace_buf;
-		for (i = 0; i < size; i++){
-			trace_buf << strings[i];
-			trace_buf << "\n";
-		}
-		poco_information(Logger_,
-			fmt::format("DESTRUCTOR({}):Destructor printing stacktrace for session {} \n{}.", CId_, State_.sessionId, trace_buf.str()));
-		free(strings);
 	}
 
 	static void NotifyKafkaDisconnect(const std::string &SerialNumber, std::uint64_t uuid) {
@@ -121,58 +96,33 @@ namespace OpenWifi {
 		}
 	}
 
-	void AP_WS_Connection::EndConnection(int from_error) {
-		poco_information(Logger_,
-			fmt::format("ENDCONNECTION({}): Calling End Connection for session {}.", CId_, State_.sessionId));
-		if (from_error > 0) {
-			poco_information(Logger_,
-				fmt::format("ENDCONNECTION({}): Sleeping for session {}.", CId_, State_.sessionId));
-			usleep(1500000);
-		}
+	void AP_WS_Connection::EndConnection() {
 		bool expectedValue=false;
-		poco_information(Logger_,
-			fmt::format("ENDCONNECTION({}): session {} is dead {}.", CId_, State_.sessionId, Dead_));
 		if (Dead_.compare_exchange_strong(expectedValue,true,std::memory_order_release,std::memory_order_relaxed)) {
 
 			if(!SerialNumber_.empty() && State_.LastContact!=0) {
 				StorageService()->SetDeviceLastRecordedContact(SerialNumber_, State_.LastContact);
 			}
 			
-			poco_information(Logger_,
-				fmt::format("ENDCONNECTION({}): session {} is registered {}.", CId_, State_.sessionId, Registered_));
 			if (Registered_) {
 				Registered_ = false;
 				Reactor_->removeEventHandler(
 					*WS_, Poco::NObserver<AP_WS_Connection, Poco::Net::ReadableNotification>(
 							  *this, &AP_WS_Connection::OnSocketReadable));
-				poco_information(Logger_,
-					fmt::format("ENDCONNECTION({}): session {} removed readable notification handler.", CId_, State_.sessionId));
 				Reactor_->removeEventHandler(
 					*WS_, Poco::NObserver<AP_WS_Connection, Poco::Net::ShutdownNotification>(
 							  *this, &AP_WS_Connection::OnSocketShutdown));
-				poco_information(Logger_,
-					fmt::format("ENDCONNECTION({}): session {} removed shutdown notification handler.", CId_, State_.sessionId));
 				Reactor_->removeEventHandler(
 					*WS_, Poco::NObserver<AP_WS_Connection, Poco::Net::ErrorNotification>(
 							  *this, &AP_WS_Connection::OnSocketError));
-				poco_information(Logger_,
-					fmt::format("ENDCONNECTION({}): session {} removed error notification handler.", CId_, State_.sessionId));
 				Registered_=false;
 			}
-			poco_information(Logger_,
-				fmt::format("ENDCONNECTION({}): session {} closing WS_ object.", CId_, State_.sessionId));
 			WS_->close();
-			poco_information(Logger_,
-				fmt::format("ENDCONNECTION({}): session {} is marked for cleanup.", CId_, State_.sessionId));
 
 			if(!SerialNumber_.empty()) {
 				DeviceDisconnectionCleanup(SerialNumber_, uuid_);
 			}
 			AP_WS_Server()->AddCleanupSession(State_.sessionId, SerialNumberInt_);
-		}
-		else {
-			poco_information(Logger_,
-				fmt::format("ENDCONNECTION({}): session {} is already dead {}, skipping EndConnection", CId_, State_.sessionId, Dead_));
 		}
 	}
 
@@ -322,7 +272,7 @@ namespace OpenWifi {
 							"Device will have to retry. Unsecure connect denied.",
 							CId_, State_.sessionId));
 		}
-		EndConnection(0);
+		EndConnection();
 		return false;
 	}
 
@@ -610,16 +560,16 @@ namespace OpenWifi {
 
 	void AP_WS_Connection::OnSocketShutdown(
 		[[maybe_unused]] const Poco::AutoPtr<Poco::Net::ShutdownNotification> &pNf) {
-		poco_information(Logger_, fmt::format("SOCKET-SHUTDOWN({}): Closing.", CId_));
+		poco_trace(Logger_, fmt::format("SOCKET-SHUTDOWN({}): Closing.", CId_));
 		std::lock_guard	G(ConnectionMutex_);
-		return EndConnection(0);
+		return EndConnection();
 	}
 
 	void AP_WS_Connection::OnSocketError(
 		[[maybe_unused]] const Poco::AutoPtr<Poco::Net::ErrorNotification> &pNf) {
-		poco_information(Logger_, fmt::format("SOCKET-ERROR({}): Closing.", CId_));
+		poco_trace(Logger_, fmt::format("SOCKET-ERROR({}): Closing.", CId_));
 		std::lock_guard	G(ConnectionMutex_);
-		return EndConnection(1);
+		return EndConnection();
 	}
 
 	void AP_WS_Connection::OnSocketReadable(
@@ -646,7 +596,7 @@ namespace OpenWifi {
 					Logger_, fmt::format("Unknown exception for {}. Connection terminated.", CId_));
 			}
 		}
-		EndConnection(0);
+		EndConnection();
 	}
 
 	void AP_WS_Connection::ProcessIncomingFrame() {
@@ -663,7 +613,7 @@ namespace OpenWifi {
 				poco_information(Logger_,
 								 fmt::format("DISCONNECT({}): device has disconnected. Session={}",
 											 CId_, State_.sessionId));
-				return EndConnection(0);
+				return EndConnection();
 			}
 
 			IncomingFrame.append(0);
@@ -765,9 +715,6 @@ namespace OpenWifi {
 									 IncomingFrame.begin() == nullptr ? "" : IncomingFrame.begin(),
 									 State_.sessionId));
 			KillConnection=true;
-			Poco::AutoPtr<Poco::Net::ErrorNotification> pNf;
-			OnSocketError(pNf);
-			return;
 		} catch (const Poco::Net::WebSocketException &E) {
 			poco_warning(Logger_,
 						 fmt::format("WebSocketException({}): Text:{} Payload:{} Session:{}", CId_,
@@ -830,7 +777,7 @@ namespace OpenWifi {
 			return;
 
 		poco_warning(Logger_, fmt::format("DISCONNECTING({}): ConnectionException: {} Errors: {}", CId_, KillConnection, Errors_ ));
-		EndConnection(0);
+		EndConnection();
 	}
 
 	bool AP_WS_Connection::Send(const std::string &Payload) {

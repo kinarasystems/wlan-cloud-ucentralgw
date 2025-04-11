@@ -151,7 +151,6 @@ namespace OpenWifi {
 							   std::size_t size);
 
 		void StartSession(uint64_t session_id, uint64_t SerialNumber);
-		void CheckSession(uint64_t session_id, uint64_t SerialNumber);
 		bool EndSession(uint64_t session_id, uint64_t SerialNumber);
 		void SetWebSocketTelemetryReporting(uint64_t RPCID, uint64_t SerialNumber,
 											uint64_t Interval, uint64_t Lifetime,
