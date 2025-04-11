@@ -79,7 +79,7 @@ namespace OpenWifi {
 		std::lock_guard G(ConnectionMutex_);
 		AP_WS_Server()->DecrementConnectionCount();
 		EndConnection();
-		poco_trace(Logger_, fmt::format("TERMINATION({}): Session={}, Connection removed.", SerialNumber_,
+		poco_debug(Logger_, fmt::format("TERMINATION({}): Session={}, Connection removed.", SerialNumber_,
 										State_.sessionId));
 	}
 
