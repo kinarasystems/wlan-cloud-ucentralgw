@@ -245,6 +245,13 @@ namespace OpenWifi {
 				poco_trace(this->Logger(),fmt::format("Cleaning up session: {} for device: {}", Session.first, Utils::IntToSerialNumber(Session.second)));
 				EndSession(Session.first, Session.second);
 			}
+
+			{
+				poco_information(this->Logger(),fmt::format("Clearing Old Sessions vector"));
+				std::lock_guard OldSessionLock(OldSessionsMutex_);
+				OldSessions_.clear();
+				poco_information(this->Logger(),fmt::format("Finished clearing Old Sessions vector"));
+			}
 		}
 	}
 
@@ -506,19 +513,59 @@ namespace OpenWifi {
 	void AP_WS_Server::StartSession(uint64_t session_id, uint64_t SerialNumber) {
 		auto sessionHash = SessionHash::Hash(session_id);
 		std::shared_ptr<AP_WS_Connection> Connection;
+		std::shared_ptr<AP_WS_Connection> OldConnection;
+		std::shared_ptr<AP_WS_Connection> Connection2;
+		poco_information(Logger(), fmt::format("Starting session : {} for device: {}", session_id, Utils::IntToSerialNumber(SerialNumber)));
 		{
 			std::lock_guard SessionLock(SessionMutex_[sessionHash]);
 			auto SessionHint = Sessions_[sessionHash].find(session_id);
 			if (SessionHint == end(Sessions_[sessionHash])) {
+				poco_information(Logger(), fmt::format("No session ID in session hash for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
 				return;
 			}
 			Connection = SessionHint->second;
 			Sessions_[sessionHash].erase(SessionHint);
+			poco_information(Logger(), fmt::format("Removed connection from session hash for session : {} and device: {}. Connection ptr address: {}", session_id, Utils::IntToSerialNumber(SerialNumber), fmt::ptr(Connection.get())));
 		}
+
+		poco_information(Logger(), fmt::format("Waiting on device lock for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
 		
 		auto deviceHash = MACHash::Hash(SerialNumber);
 		std::lock_guard DeviceLock(SerialNumbersMutex_[deviceHash]);
+		poco_information(Logger(), fmt::format("Acquired device lock for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
+		auto OldDeviceHint = SerialNumbers_[deviceHash].find(SerialNumber);
+		if (OldDeviceHint != end(SerialNumbers_[deviceHash])) {
+			OldConnection = OldDeviceHint->second;
+			std::lock_guard OldSessionLock(OldSessionsMutex_);
+			OldSessions_.push_back(OldConnection);
+		}
 		SerialNumbers_[deviceHash][SerialNumber] = Connection;
+		poco_information(Logger(), fmt::format("Moved connection into device hash for session : {} and device: {}. Connection ptr address: {}", session_id, Utils::IntToSerialNumber(SerialNumber),  fmt::ptr(Connection.get())));
+		auto DeviceHint = SerialNumbers_[deviceHash].find(SerialNumber);
+		if (DeviceHint == end(SerialNumbers_[deviceHash])) {
+			poco_information(Logger(), fmt::format("No serial in device hash for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
+		}
+		else {
+			Connection2 = DeviceHint->second;
+			poco_information(Logger(), fmt::format("Checking connection ptr in device hash for session : {} and device: {}. Connection ptr address: {}", session_id, Utils::IntToSerialNumber(SerialNumber),  fmt::ptr(Connection2.get())));
+		}
+		poco_information(Logger(), fmt::format("Leaving StartSession for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
+	}
+
+	void AP_WS_Server::CheckSession(uint64_t session_id, uint64_t SerialNumber) {
+		std::shared_ptr<AP_WS_Connection> Connection;
+		poco_information(Logger(), fmt::format("In Check session : {} for device: {}", session_id, Utils::IntToSerialNumber(SerialNumber)));
+		auto deviceHash = MACHash::Hash(SerialNumber);
+		std::lock_guard DeviceLock(SerialNumbersMutex_[deviceHash]);
+		auto DeviceHint = SerialNumbers_[deviceHash].find(SerialNumber);
+		if (DeviceHint == end(SerialNumbers_[deviceHash])) {
+			poco_information(Logger(), fmt::format("No serial in device hash for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
+		}
+		else {
+			Connection = DeviceHint->second;
+			poco_information(Logger(), fmt::format("Checking connection ptr (check session) in device hash for session : {} and device: {}. Connection ptr address: {}", session_id, Utils::IntToSerialNumber(SerialNumber),  fmt::ptr(Connection.get())));
+		}
+		poco_information(Logger(), fmt::format("Leaving CheckSession for session : {} and device: {}.", session_id, Utils::IntToSerialNumber(SerialNumber)));
 	}
 
 	bool AP_WS_Server::EndSession(uint64_t session_id, uint64_t SerialNumber) {

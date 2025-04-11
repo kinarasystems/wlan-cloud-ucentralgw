@@ -72,6 +72,7 @@ namespace OpenWifi {
 			CommandManager()->ClearQueue(SerialNumberInt_);
 
 			AP_WS_Server()->StartSession(State_.sessionId, SerialNumberInt_);
+			poco_information(Logger(), fmt::format("Left Start session for session {} and serial {}.", State_.sessionId, SerialNumber_));
 
 			Config::Capabilities Caps(Capabilities);
 
@@ -108,17 +109,25 @@ namespace OpenWifi {
 			if(Capabilities->has("secure-rtty")) {
 				RTTYMustBeSecure_ = Capabilities->getValue<bool>("secure-rtty");
 			}
+			AP_WS_Server()->CheckSession(State_.sessionId, SerialNumberInt_);
+			poco_information(Logger(), fmt::format("Process connect 0 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 
 			State_.locale = FindCountryFromIP()->Get(IP);
+			poco_information(Logger(), fmt::format("Process connect 0.001 for session {} and serial {}.", State_.sessionId, SerialNumber_));
+			AP_WS_Server()->CheckSession(State_.sessionId, SerialNumberInt_);
 			GWObjects::Device DeviceInfo;
+			poco_information(Logger(), fmt::format("Process connect 0.01 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 			std::lock_guard DbSessionLock(DbSession_->Mutex());
+			poco_information(Logger(), fmt::format("Process connect 0.1 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 
 			auto DeviceExists = StorageService()->GetDevice(DbSession_->Session(), SerialNumber_, DeviceInfo);
+			poco_information(Logger(), fmt::format("Process connect 1 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 			if (Daemon()->AutoProvisioning() && !DeviceExists) {
 				//	check the firmware version. if this is too old, we cannot let that device connect yet, we must
 				//	force a firmware upgrade
 				GWObjects::DefaultFirmware	MinimumFirmware;
 				if(FirmwareRevisionCache()->DeviceMustUpgrade(Compatible_, Firmware, MinimumFirmware)) {
+					poco_information(Logger(), fmt::format("Process connect 1.1 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 					Poco::JSON::Object	UpgradeCommand, Params;
 					UpgradeCommand.set(uCentralProtocol::JSONRPC,uCentralProtocol::JSONRPC_VERSION);
 					UpgradeCommand.set(uCentralProtocol::METHOD,uCentralProtocol::UPGRADE);
@@ -153,8 +162,9 @@ namespace OpenWifi {
 			} else if (!Daemon()->AutoProvisioning() && !DeviceExists) {
 				SendKafkaDeviceNotProvisioned(SerialNumber_, Firmware, Compatible_, CId_);
 				poco_warning(Logger(),fmt::format("Device {} is a {} from {} and cannot be provisioned.",SerialNumber_,Compatible_, CId_));
-				return EndConnection();
+				return EndConnection(0);
 			} else if (DeviceExists) {
+				poco_information(Logger(), fmt::format("Process connect 1.2 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 				StorageService()->UpdateDeviceCapabilities(DbSession_->Session(), SerialNumber_, Caps);
 				int Updated{0};
 				if (!Firmware.empty()) {
@@ -235,6 +245,7 @@ namespace OpenWifi {
 					StorageService()->UpdateDevice(DbSession_->Session(), DeviceInfo);
 				}
 			}
+			poco_information(Logger(), fmt::format("Process connect 2 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 
 			if(!Simulated_) {
 				uint64_t UpgradedUUID = 0;
@@ -248,6 +259,7 @@ namespace OpenWifi {
 			ConnectionCompletionTime_ =
 				std::chrono::high_resolution_clock::now() - ConnectionStart_;
 			State_.connectionCompletionTime = ConnectionCompletionTime_.count();
+			poco_information(Logger(), fmt::format("Process connect 3 for session {} and serial {}.", State_.sessionId, SerialNumber_));
 
 			if (State_.VerifiedCertificate == GWObjects::VALID_CERTIFICATE) {
 				if ((Utils::SerialNumberMatch(CN_, SerialNumber_,
@@ -273,7 +285,7 @@ namespace OpenWifi {
 							Logger_, fmt::format("CONNECT({}): Serial number mismatch disallowed. "
 												 "Device rejected. CN={} Serial={} Session={}",
 												 CId_, CN_, SerialNumber_, State_.sessionId));
-						return EndConnection();
+						return EndConnection(0);
 					}
 				}
 			} else {
@@ -302,6 +314,7 @@ namespace OpenWifi {
 							CId_));
 			Errors_++;
 		}
+		poco_information(Logger(), fmt::format("Leaving process connect for session {} and serial {}.", State_.sessionId, SerialNumber_));
 	}
 
 } // namespace OpenWifi

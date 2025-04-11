@@ -151,6 +151,7 @@ namespace OpenWifi {
 							   std::size_t size);
 
 		void StartSession(uint64_t session_id, uint64_t SerialNumber);
+		void CheckSession(uint64_t session_id, uint64_t SerialNumber);
 		bool EndSession(uint64_t session_id, uint64_t SerialNumber);
 		void SetWebSocketTelemetryReporting(uint64_t RPCID, uint64_t SerialNumber,
 											uint64_t Interval, uint64_t Lifetime,
@@ -217,6 +218,8 @@ namespace OpenWifi {
 	  private:
 		std::array<std::mutex,SessionHashMax> 			SessionMutex_;
 		std::array<std::map<std::uint64_t, std::shared_ptr<AP_WS_Connection>>,SessionHashMax> Sessions_;
+		std::mutex OldSessionsMutex_;
+		std::vector<std::shared_ptr<AP_WS_Connection>> OldSessions_;
 		using SerialNumberMap = std::map<uint64_t /* serial number */,
 										 std::shared_ptr<AP_WS_Connection>>;
 		std::array<SerialNumberMap,MACHashMax>			SerialNumbers_;

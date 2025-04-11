@@ -30,11 +30,12 @@ namespace OpenWifi {
 								  Poco::Logger &L, std::pair<std::shared_ptr<Poco::Net::SocketReactor>, std::shared_ptr<LockedDbSession>> R);
 		~AP_WS_Connection();
 
-		void EndConnection();
+		void EndConnection(int from_error);
 		void ProcessJSONRPCEvent(Poco::JSON::Object::Ptr &Doc);
 		void ProcessJSONRPCResult(Poco::JSON::Object::Ptr Doc);
 		void ProcessIncomingFrame();
 		void ProcessIncomingRadiusData(const Poco::JSON::Object::Ptr &Doc);
+		void print_stacktrace(void);
 
 		[[nodiscard]] bool Send(const std::string &Payload);
 		[[nodiscard]] inline bool MustBeSecureRTTY() const { return RTTYMustBeSecure_; }
