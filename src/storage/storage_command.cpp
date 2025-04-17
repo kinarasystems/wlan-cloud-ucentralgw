@@ -644,8 +644,6 @@ namespace OpenWifi {
 			uint64_t Size = FileContent.str().size();
 
 			Poco::Data::Session Sess = Pool_->get();
-			Sess.begin();
-			Poco::Data::Statement Statement(Sess);
 
 			if (Size < FileUploader()->MaxSize()) {
 
@@ -668,6 +666,18 @@ namespace OpenWifi {
 			} else {
 				poco_warning(Logger(), fmt::format("File {} is too large.", UUID));
 			}
+
+			// update CommandList here to ensure that file us uploaded
+                        Sess.begin();
+                        Poco::Data::Statement Statement(Sess);
+			std::string StatementStr;
+			StatementStr =
+				"UPDATE CommandList SET WaitingForFile=?, AttachDate=?, AttachSize=? WHERE UUID=?";
+
+			Statement << ConvertParams(StatementStr), Poco::Data::Keywords::use(WaitForFile),
+				Poco::Data::Keywords::use(Now), Poco::Data::Keywords::use(Size),
+				Poco::Data::Keywords::use(UUID);
+			Statement.execute();
 			Sess.commit();
 
 			// update CommandList here to ensure that file us uploaded

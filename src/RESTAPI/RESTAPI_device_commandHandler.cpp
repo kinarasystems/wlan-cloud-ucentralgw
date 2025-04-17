@@ -170,7 +170,6 @@ namespace OpenWifi {
 		{APCommands::Commands::powercycle, false, true, &RESTAPI_device_commandHandler::PowerCycle, 60000ms},
 		{APCommands::Commands::fixedconfig, false, true, &RESTAPI_device_commandHandler::FixedConfig, 120000ms},
 		{APCommands::Commands::cablediagnostics, false, true, &RESTAPI_device_commandHandler::CableDiagnostics, 120000ms},
-
 	};
 
 	void RESTAPI_device_commandHandler::DoPost() {
@@ -1573,21 +1572,26 @@ namespace OpenWifi {
 										   Logger_);
 	}
 
+	// `fixedconfig` command is used set country propery on AP
+	// This handler uses `fixedconfig` command definitions
 	void RESTAPI_device_commandHandler::FixedConfig(
 		const std::string &CMD_UUID, uint64_t CMD_RPC, std::chrono::milliseconds timeout,
 		[[maybe_unused]] const GWObjects::DeviceRestrictions &Restrictions) {
 		poco_debug(Logger_, fmt::format("FIXEDCONFIG({},{}): TID={} user={} serial={}", CMD_UUID, CMD_RPC,
 										TransactionId_, Requester(), SerialNumber_));
+		// do not allow `fixedconfig` command for simulated devices
 		if(IsDeviceSimulated(SerialNumber_)) {
 			CallCanceled("FIXEDCONFIG", CMD_UUID, CMD_RPC, RESTAPI::Errors::SimulatedDeviceNotSupported);
 			return BadRequest(RESTAPI::Errors::SimulatedDeviceNotSupported);
 		}
 
+		// setup and validate fixedconfig object
 		GWObjects::FixedConfig fixed_config;
 		if(!fixed_config.from_json(ParsedBody_)) {
 			return BadRequest(RESTAPI::Errors::MissingOrInvalidParameters);
 		}
 
+		// setup command message
 		GWObjects::CommandDetails Cmd;
 		Cmd.SerialNumber = SerialNumber_;
 		Cmd.SubmittedBy = Requester();
@@ -1600,6 +1604,7 @@ namespace OpenWifi {
 		Cmd.ErrorCode = 0;
 		Cmd.WaitingForFile = 0;
 
+		// send fixedconfig command to device and return status
 		return RESTAPI_RPC::WaitForCommand(CMD_RPC, APCommands::Commands::fixedconfig, false, Cmd,
 										   *ParsedBody_, *Request, *Response, timeout, nullptr, this,
 										   Logger_);

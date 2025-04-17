@@ -376,18 +376,21 @@ static std::string DefaultAPSchema = R"foo(
             "properties": {
                 "port-mirror": {
                     "description": "Enable mirror of traffic from multiple minotor ports to a single analysis port.",
-                    "type": "object",
-                    "properties": {
-                        "monitor-ports": {
-                            "description": "The list of ports that we want to mirror.",
-                            "type": "array",
-                            "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "monitor-ports": {
+                                "description": "The list of ports that we want to mirror.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "analysis-port": {
+                                "description": "The port that mirror'ed packets should be sent to.",
                                 "type": "string"
                             }
-                        },
-                        "analysis-port": {
-                            "description": "The port that mirror'ed packets should be sent to.",
-                            "type": "string"
                         }
                     }
                 },
@@ -2411,11 +2414,18 @@ static std::string DefaultAPSchema = R"foo(
                     "$ref": "#/$defs/interface.ssid.encryption"
                 },
                 "multi-psk": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/$defs/interface.ssid.multi-psk"
-                    }
-                },
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/interface.ssid.multi-psk"
+                            }
+                        },
+                        {
+                            "type": "boolean"
+                        }
+                    ]
+		},
                 "rrm": {
                     "$ref": "#/$defs/interface.ssid.rrm"
                 },
@@ -4645,16 +4655,22 @@ static std::string DefaultSWITCHSchema = R"foo(
             "type": "object",
             "properties": {
                 "port-mirror": {
-                    "type": "object",
-                    "properties": {
-                        "monitor-ports": {
-                            "type": "array",
-                            "items": {
+                    "description": "Enable mirror of traffic from multiple minotor ports to a single analysis port.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "monitor-ports": {
+                                "description": "The list of ports that we want to mirror.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "analysis-port": {
+                                "description": "The port that mirror'ed packets should be sent to.",
                                 "type": "string"
                             }
-                        },
-                        "analysis-port": {
-                            "type": "string"
                         }
                     }
                 },
@@ -6603,10 +6619,17 @@ static std::string DefaultSWITCHSchema = R"foo(
                     "$ref": "#/$defs/interface.ssid.encryption"
                 },
                 "multi-psk": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/$defs/interface.ssid.multi-psk"
-                    }
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/interface.ssid.multi-psk"
+                            }
+                        },
+                        {
+                            "type": "boolean"
+                        }
+                    ]
                 },
                 "rrm": {
                     "$ref": "#/$defs/interface.ssid.rrm"
