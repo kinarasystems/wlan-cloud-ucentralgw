@@ -1,3 +1,7 @@
+## 3.0.17 (April 17, 2025)
+- chore: updated package.json, updated helm/Chart.yaml, updated helm/values.yaml, updated CMakeLists.txt, updated version, updated CHANGELOG.md, bumped 3.0.16 -> 3.0.17
+- Merge pull request #21 from kinarasystems/kinara_upstream_master_sync
+
 ## 3.0.16 (April 17, 2025)
 - chore: updated package.json, updated helm/Chart.yaml, updated helm/values.yaml, updated CMakeLists.txt, updated version, updated CHANGELOG.md, bumped 3.0.15 -> 3.0.16
 - Merge pull request #18 from kinarasystems/WIFI-14292-fix-json-parse-error
