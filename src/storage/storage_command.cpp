@@ -680,6 +680,17 @@ namespace OpenWifi {
 			Statement.execute();
 			Sess.commit();
 
+			// update CommandList here to ensure that file us uploaded
+			std::string StatementStr;
+			StatementStr =
+				"UPDATE CommandList SET WaitingForFile=?, AttachDate=?, AttachSize=? WHERE UUID=?";
+
+			Statement << ConvertParams(StatementStr), Poco::Data::Keywords::use(WaitForFile),
+				Poco::Data::Keywords::use(Now), Poco::Data::Keywords::use(Size),
+				Poco::Data::Keywords::use(UUID);
+			Statement.execute();
+			Sess.commit();
+
 			return true;
 		} catch (const Poco::Exception &E) {
 			Logger().log(E);
