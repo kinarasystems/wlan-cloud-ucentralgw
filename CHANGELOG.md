@@ -1,3 +1,7 @@
+## 3.0.18 (April 17, 2025)
+- chore: updated package.json, updated helm/Chart.yaml, updated helm/values.yaml, updated CMakeLists.txt, updated version, updated CHANGELOG.md, bumped 3.0.17 -> 3.0.18
+- Merge pull request #22 from kinarasystems/kinara_upstream_master_sync
+
 ## 3.0.17 (April 17, 2025)
 - chore: updated package.json, updated helm/Chart.yaml, updated helm/values.yaml, updated CMakeLists.txt, updated version, updated CHANGELOG.md, bumped 3.0.16 -> 3.0.17
 - Merge pull request #21 from kinarasystems/kinara_upstream_master_sync
