@@ -14,6 +14,8 @@
 #include "nlohmann/json.hpp"
 
 #include "Poco/NObserver.h"
+#include <Poco/Net/Context.h>
+#include <Poco/Net/AcceptCertificateHandler.h>
 #include "Poco/Net/SocketNotification.h"
 #include "Poco/Net/NetException.h"
 #include "Poco/Net/WebSocketImpl.h"
@@ -71,10 +73,34 @@ namespace OpenWifi {
 				const auto &RootCas =
 					MicroServiceConfigPath("ucentral.websocket.host.0.rootca", "");
 				const auto &Cas = MicroServiceConfigPath("ucentral.websocket.host.0.cas", "");
+				const auto &ClientCasFile = MicroServiceConfigPath("ucentral.websocket.host.0.clientcas", "");
+
+				// Read the security mode from websocket configuration
+				const auto &SecurityMode =
+					MicroServiceConfigGetString("ucentral.websocket.host.0.security", "relaxed");
+
+				// Parse security mode string to verification mode
+				Poco::Net::Context::VerificationMode VerificationLevel = Poco::Net::Context::VERIFY_RELAXED;
+				if (SecurityMode == "strict") {
+					VerificationLevel = Poco::Net::Context::VERIFY_STRICT;
+				} else if (SecurityMode == "none") {
+					VerificationLevel = Poco::Net::Context::VERIFY_NONE;
+				} else if (SecurityMode == "relaxed") {
+					VerificationLevel = Poco::Net::Context::VERIFY_RELAXED;
+				} else if (SecurityMode == "once") {
+					VerificationLevel = Poco::Net::Context::VERIFY_ONCE;
+				}
+
+				// Determine if we should accept all certificates (when security is "none")
+				bool acceptAllCerts = (VerificationLevel == Poco::Net::Context::VERIFY_NONE);
+
+				poco_information(Logger(),
+					fmt::format("RTTY device socket security mode: {} (acceptAllCerts: {})",
+								SecurityMode, acceptAllCerts));
 
 				Poco::Net::Context::Params P;
 
-				P.verificationMode = Poco::Net::Context::VERIFY_ONCE;
+				P.verificationMode = acceptAllCerts ? Poco::Net::Context::VERIFY_RELAXED : VerificationLevel;
 				P.verificationDepth = 9;
 				P.loadDefaultCAs = RootCas.empty();
 				P.cipherList = "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
@@ -86,6 +112,7 @@ namespace OpenWifi {
 				Poco::Crypto::X509Certificate Cert(CertFileName);
 				Poco::Crypto::X509Certificate Root(RootCaFileName);
 				Poco::Crypto::X509Certificate Issuing(IssuerFileName);
+                std::vector<Poco::Crypto::X509Certificate> ClientCasCerts;
 				Poco::Crypto::RSAKey Key("", KeyFileName, KeyPassword);
 
 				DeviceSecureContext->useCertificate(Cert);
@@ -93,7 +120,11 @@ namespace OpenWifi {
 				DeviceSecureContext->addCertificateAuthority(Root);
 				DeviceSecureContext->addChainCertificate(Issuing);
 				DeviceSecureContext->addCertificateAuthority(Issuing);
-				DeviceSecureContext->addCertificateAuthority(Root);
+                ClientCasCerts = Poco::Net::X509Certificate::readPEM(ClientCasFile);
+                for (const auto &cert : ClientCasCerts) {
+                    DeviceSecureContext->addChainCertificate(cert);
+                    DeviceSecureContext->addCertificateAuthority(cert);
+                }
 				DeviceSecureContext->enableSessionCache(true);
 				DeviceSecureContext->setSessionCacheSize(0);
 				DeviceSecureContext->setSessionTimeout(120);
@@ -101,6 +132,13 @@ namespace OpenWifi {
 				DeviceSecureContext->usePrivateKey(Key);
 				DeviceSecureContext->disableProtocols(Poco::Net::Context::PROTO_TLSV1 |
 													  Poco::Net::Context::PROTO_TLSV1_1);
+
+				// Accept all certificates when security mode is "none"
+				if (acceptAllCerts) {
+					DeviceSecureContext->setInvalidCertificateHandler(
+						Poco::SharedPtr<Poco::Net::InvalidCertificateHandler>(
+							new Poco::Net::AcceptCertificateHandler(true)));
+				}
 
 				SSL_CTX *SSLCtxDevice = DeviceSecureContext->sslContext();
 				SSL_CTX_dane_enable(SSLCtxDevice);
@@ -573,14 +611,16 @@ namespace OpenWifi {
 		try {
 			Client = Clients_.find(pNf->socket().impl()->sockfd());
 			if (Client == end(Clients_)) {
-				poco_warning(Logger(), fmt::format("Cannot find client socket: {}",
-												   pNf->socket().impl()->sockfd()));
+				poco_warning(Logger(),
+					fmt::format("Cannot find client socket: {}",
+								pNf->socket().impl()->sockfd()));
 				return;
 			}
 			Connection = Client->second;
 			if(Connection->WSSocket_==nullptr || Connection->WSSocket_->impl()==nullptr) {
-				poco_warning(Logger(), fmt::format("WebSocket is no valid: {}",
-												   Connection->SerialNumber_));
+				poco_warning(Logger(),
+					fmt::format("WebSocket is not valid: {}",
+							    Connection->SerialNumber_));
 				return;
 			}
 
@@ -589,15 +629,25 @@ namespace OpenWifi {
 
 			auto ReceivedBytes = Connection->WSSocket_->receiveFrame(FrameBuffer, sizeof(FrameBuffer), flags);
 			auto Op = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
+
+			if (ReceivedBytes == -1) {
+				poco_trace(Logger(),
+					fmt::format("WS-EMPTY{}: Non-blocking try-again empty Frame: flags {}",
+								Connection->SerialNumber_, flags));
+				return;
+			}
+
 			switch (Op) {
 
 			case Poco::Net::WebSocket::FRAME_OP_PING: {
 				Connection->WSSocket_->sendFrame("", 0,
-											   (int)Poco::Net::WebSocket::FRAME_OP_PONG |
-												   (int)Poco::Net::WebSocket::FRAME_FLAG_FIN);
+				    (int)Poco::Net::WebSocket::FRAME_OP_PONG |
+					(int)Poco::Net::WebSocket::FRAME_FLAG_FIN);
 			} break;
+
 			case Poco::Net::WebSocket::FRAME_OP_PONG: {
 			} break;
+
 			case Poco::Net::WebSocket::FRAME_OP_TEXT: {
 				if (ReceivedBytes == 0) {
 					EndConnection(Connection,__func__,__LINE__);
@@ -624,19 +674,29 @@ namespace OpenWifi {
 					}
 				}
 			} break;
+
 			case Poco::Net::WebSocket::FRAME_OP_BINARY: {
 				if (ReceivedBytes == 0) {
 					EndConnection(Connection,__func__,__LINE__);
 					return;
 				} else {
 					poco_trace(Logger(),
-							   fmt::format("Sending {} key strokes to device.", ReceivedBytes));
+						fmt::format("Sending {} key strokes to device.", ReceivedBytes));
 					if (!RTTYS_server().KeyStrokes(Connection, FrameBuffer, ReceivedBytes)) {
 						EndConnection(Connection,__func__,__LINE__);
 						return;
 					}
 				}
 			} break;
+
+			case Poco::Net::WebSocket::FRAME_OP_CONT: {
+				// may have to handle this, but not sure whether it's a continuation for text or
+				// binary, seems to be a hole in the protocol.
+				poco_warning(Logger(),
+							 fmt::format("CONT Frame {} received, ignoring for now.",
+										 ReceivedBytes));
+			}
+
 			case Poco::Net::WebSocket::FRAME_OP_CLOSE: {
 				EndConnection(Connection,__func__,__LINE__);
 				return;
@@ -682,8 +742,8 @@ namespace OpenWifi {
 		if (Connection->WSSocket_ != nullptr && Connection->WSSocket_->impl()!= nullptr) {
 			try {
 				Connection->WSSocket_->sendFrame(Buf, len,
-												 Poco::Net::WebSocket::FRAME_FLAG_FIN |
-													 Poco::Net::WebSocket::FRAME_OP_BINARY);
+												 (int) Poco::Net::WebSocket::FRAME_FLAG_FIN |
+												 (int) Poco::Net::WebSocket::FRAME_OP_BINARY);
 				return;
 			} catch (...) {
 				poco_error(Logger(), "SendData shutdown.");
@@ -819,7 +879,9 @@ namespace OpenWifi {
 				Connected_.erase(hint);
 				EndPoints_.erase(id);
 			} else {
-				EndPoints_.erase(hint->second->Id_);
+				auto id = hint->second->Id_;
+				Connected_.erase(hint);
+				EndPoints_.erase(id);
 			}
 		}
 
@@ -985,8 +1047,9 @@ namespace OpenWifi {
 	}
 
 	bool RTTYS_server::SendToClient(Poco::Net::WebSocket &WebSocket, const u_char *Buf, int len) {
-		WebSocket.sendFrame(
-			Buf, len, Poco::Net::WebSocket::FRAME_FLAG_FIN | Poco::Net::WebSocket::FRAME_OP_BINARY);
+		WebSocket.sendFrame(Buf, len,
+							(int) Poco::Net::WebSocket::FRAME_FLAG_FIN |
+							(int) Poco::Net::WebSocket::FRAME_OP_BINARY);
 		return true;
 	}
 

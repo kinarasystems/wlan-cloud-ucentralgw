@@ -1,3 +1,8 @@
+## 4.2.2 (May 23, 2026)
+- Sync upstream Telecominfraproject/wlan-cloud-ucentralgw master through c51745f3 (74 commits)
+- Highlights: new reenroll device command + cert/issuer fields; package install command; RTTY security modes + PONG response + leak fixes; WebSocket connection refactor (AP_WS_Connection); configuration schema validation sync with OLS; framework utils cleanup; Poco library upgrade + Debian Bookworm base image; new build-ucentralgw.sh script; openapi schema additions
+- Kinara customizations preserved: fixedconfig/cablediagnostics/compressedconfig device commands, RBAC security objects, AWS ECR build/deploy workflow, helm/values, buildit/buildaws scripts
+
 ## 3.0.18 (April 17, 2025)
 - chore: updated package.json, updated helm/Chart.yaml, updated helm/values.yaml, updated CMakeLists.txt, updated version, updated CHANGELOG.md, bumped 3.0.17 -> 3.0.18
 - Merge pull request #22 from kinarasystems/kinara_upstream_master_sync
