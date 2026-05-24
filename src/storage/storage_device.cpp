@@ -182,9 +182,9 @@ namespace OpenWifi {
 
 			if(!platform.empty()) {
 				if (includeProvisioned == false) {
-					whereClause = fmt::format("WHERE entity='' and venue='' and DeviceType='" + platform + "'");
+					whereClause = fmt::format("WHERE entity='' and venue='' and DeviceType='{}'", platform);
 				} else {
-					whereClause = fmt::format("WHERE DeviceType='" + platform + "'");
+					whereClause = fmt::format("WHERE DeviceType='{}'", platform);
 				}
 			} else {
 				if (includeProvisioned == false) {
