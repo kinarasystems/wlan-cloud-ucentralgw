@@ -276,7 +276,8 @@ static std::string DefaultAPSchema = R"foo(
                         "sae-mixed",
                         "wpa3",
                         "wpa3-192",
-                        "wpa3-mixed"
+                        "wpa3-mixed",
+                        "mpsk-radius"
                     ],
                     "examples": [
                         "psk2"
@@ -552,7 +553,8 @@ static std::string DefaultAPSchema = R"foo(
                         "5G",
                         "5G-lower",
                         "5G-upper",
-                        "6G"
+                        "6G",
+                        "HaLow"
                     ]
                 },
                 "bandwidth": {
@@ -569,7 +571,7 @@ static std::string DefaultAPSchema = R"foo(
                     "oneOf": [
                         {
                             "type": "integer",
-                            "maximum": 196,
+                            "maximum": 233,
                             "minimum": 1
                         },
                         {
@@ -583,7 +585,7 @@ static std::string DefaultAPSchema = R"foo(
                     "type": "array",
                     "items": {
                         "type": "integer",
-                        "maximum": 196,
+                        "maximum": 233,
                         "minimum": 1
                     }
                 },
@@ -624,6 +626,10 @@ static std::string DefaultAPSchema = R"foo(
                         8080
                     ],
                     "default": 80
+                },
+                "enable": {
+                    "description": "Specifies radio is enabled/disabled.",
+                    "type": "boolean"
                 },
                 "require-mode": {
                     "description": "Stations that do no fulfill these HT modes will be rejected.",
@@ -2309,7 +2315,8 @@ static std::string DefaultAPSchema = R"foo(
                             "5G",
                             "5G-lower",
                             "5G-upper",
-                            "6G"
+                            "6G",
+                            "HaLow"
                         ]
                     }
                 },
@@ -2412,6 +2419,11 @@ static std::string DefaultAPSchema = R"foo(
                 },
                 "encryption": {
                     "$ref": "#/$defs/interface.ssid.encryption"
+                },
+                "enhanced-mpsk": {
+                    "description": "Optionally disable MPSK",
+                    "type": "boolean",
+                    "default": true
                 },
                 "multi-psk": {
                     "anyOf": [
@@ -3742,7 +3754,8 @@ static std::string DefaultAPSchema = R"foo(
                             "5G",
                             "5G-lower",
                             "5G-upper",
-                            "6G"
+                            "6G",
+                            "HaLow"
                         ]
                     }
                 },
@@ -3777,7 +3790,7 @@ static std::string DefaultAPSchema = R"foo(
                     "enum": [
                         "polled",
                         "final",
-                        "raw-data"
+                        "raw"
                     ],
                     "default": "final"
                 },
@@ -3952,8 +3965,10 @@ static std::string DefaultAPSchema = R"foo(
                             "inactive-deauth",
                             "key-mismatch",
                             "beacon-report",
-                            "radar-detected"
-                        ]
+                            "radar-detected",
+                            "ft-finish",
+                            "sta-authorized"
+			 ]
                     }
                 }
             }
@@ -4441,7 +4456,8 @@ static std::string DefaultSWITCHSchema = R"foo(
                         "sae-mixed",
                         "wpa3",
                         "wpa3-192",
-                        "wpa3-mixed"
+                        "wpa3-mixed",
+                        "mpsk-radius"
                     ],
                     "examples": [
                         "psk2"
@@ -4655,20 +4671,17 @@ static std::string DefaultSWITCHSchema = R"foo(
             "type": "object",
             "properties": {
                 "port-mirror": {
-                    "description": "Enable mirror of traffic from multiple minotor ports to a single analysis port.",
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
                             "monitor-ports": {
-                                "description": "The list of ports that we want to mirror.",
                                 "type": "array",
                                 "items": {
                                     "type": "string"
                                 }
                             },
                             "analysis-port": {
-                                "description": "The port that mirror'ed packets should be sent to.",
                                 "type": "string"
                             }
                         }
@@ -4890,7 +4903,8 @@ static std::string DefaultSWITCHSchema = R"foo(
                         "5G",
                         "5G-lower",
                         "5G-upper",
-                        "6G"
+                        "6G",
+                        "HaLow"
                     ]
                 },
                 "bandwidth": {
@@ -4905,7 +4919,7 @@ static std::string DefaultSWITCHSchema = R"foo(
                     "oneOf": [
                         {
                             "type": "integer",
-                            "maximum": 196,
+                            "maximum": 233,
                             "minimum": 1
                         },
                         {
@@ -4918,7 +4932,7 @@ static std::string DefaultSWITCHSchema = R"foo(
                     "type": "array",
                     "items": {
                         "type": "integer",
-                        "maximum": 196,
+                        "maximum": 233,
                         "minimum": 1
                     }
                 },
@@ -4955,6 +4969,10 @@ static std::string DefaultSWITCHSchema = R"foo(
                         8080
                     ],
                     "default": 80
+                },
+                "enable": {
+                    "description": "Specifies radio is enabled/disabled.",
+                    "type": "boolean"
                 },
                 "require-mode": {
                     "type": "string",
@@ -6528,7 +6546,8 @@ static std::string DefaultSWITCHSchema = R"foo(
                             "5G",
                             "5G-lower",
                             "5G-upper",
-                            "6G"
+                            "6G",
+                            "HaLow"
                         ]
                     }
                 },
@@ -6617,6 +6636,11 @@ static std::string DefaultSWITCHSchema = R"foo(
                 },
                 "encryption": {
                     "$ref": "#/$defs/interface.ssid.encryption"
+                },
+                "enhanced-mpsk": {
+                    "description": "Optionally disable MPSK",
+                    "type": "boolean",
+                    "default": true
                 },
                 "multi-psk": {
                     "anyOf": [
@@ -7751,7 +7775,8 @@ static std::string DefaultSWITCHSchema = R"foo(
                             "5G",
                             "5G-lower",
                             "5G-upper",
-                            "6G"
+                            "6G",
+                            "HaLow"
                         ]
                     }
                 },
@@ -7920,7 +7945,9 @@ static std::string DefaultSWITCHSchema = R"foo(
                             "inactive-deauth",
                             "key-mismatch",
                             "beacon-report",
-                            "radar-detected"
+                            "radar-detected",
+                            "ft-finish",
+                            "sta-authorized"
                         ]
                     }
                 }
